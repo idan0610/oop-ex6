@@ -1,0 +1,125 @@
+idan0610
+alonnetser
+
+=============================
+=      File description     =
+=============================
+Sjavac.java						- The manager of the program.
+ReservedWords.java				- Contains the reserved words of sJava.
+RegexStrings.java				- Contains the regular expressions' strings that are used in the verifier.
+RegexPatterns.java				- An enum which contains patterns for the regular expressions.
+SjavaException.java				- Represent an exception in sJava file - the verifier marked it invalid.
+InvalidArgumantsException.java	- Invalid arguments given to the manager.
+MethodSignature.java			- Represent a method signature - name and accepted arguments.
+MethodSignatureFactory.java		- A factory for method signatures.
+MethodException.java			- An exception in a method, such as invalid arguments given,
+								  missing return, etc.
+Parser.java						- Parse the given sJava file.
+InvalidSyntaxException.java		- Represent a syntax error.
+Scope.java						- Represent a scope in the sJava file (such as method, if, while, etc.).
+Variable.java					- Represent a variable.
+Type.java						- An enum for the different variables' types.
+VariableFactory.java			- A factory for the varaibles.
+VariableException.java			- An exception related to variable creation/assignment, etc.
+
+
+=============================
+=          Design           =
+=============================
+
+We have design the program as followed:
+
+The manager of the program is Sjavac, which calls the parser with the given sJava file.
+The parser run through the file and initialize the global variables and methods (which are stored as
+MethodDeclaration objects).  
+The method declaration object contains the name of the method and its accepted
+arguments type. Then, when a method is called, the corresponding MethodSignature has 'accept' method which
+check if the method accept the given argument (order is important!).
+Then the parser run through the file a second time and parse recursively each method and its inner scopes.
+Each scope is an object that contains its variables and its upper scope's variables.
+The variables are objects which contains a boolean flags for isInitialized and isFinal. It also contain its
+Type (described below) and its name.
+The Type is an enum which represent the different types of variables. Each type also has a regular expression
+that represent the accepted values it can be assign with.
+
+
+=============================
+=  Implementation details   =
+=============================
+
+Note that each variable doesn't contain its actual assigned value. This is because there is no use in the
+program in which this value is needed. All that is needed is to ask if the variable is initialized or not,
+and this is performed with a boolean flag 'isInitialized'. The validation is performed when assigning a value
+or changing a value, but the value itself is not stored in the variable object.
+
+=============================
+=    Answers to questions   =
+=============================
+
+~~~~~~     Error Handling (section 6.1)    ~~~~~~
+
+Errors that occur due to I/O problems (such as invalid sJava file given to the manager, problem accessing
+the file, etc.) are represented as Java's IOException. They are being caught at the manager and a
+corresponding message is printed to the error output.
+Invalid sJava code which won't compile, is being represented as SjavaException. These exceptions are being
+caught in the manager and a corresponding error message is printed to the error output.
+SJavaException is an abstract exception which represent a general error in sJava file.
+It may be related to variables, methods, general syntax, etc.
+Errors related to variables, such as final variable being changed and uninitialized variable are represented
+by VariableException. Errors related to method, such as invalid arguments, are represented by MethodException
+and errors related to syntax, such as missing ';' are represented by InvalidSyntaxException. These 3
+exception classes extends the abstract SJavaException.
+
+
+~~~~~~ 		Object Oriented Design (section 6.2)	~~~~~~
+
+During the thinking process about the design, we ruled out the idea of implementing an abstract Variable
+class, and other classes, each represents a variable of a specific type extends it, because we realized there
+is no need to store the values of the variables and we should only check their validity. 
+Instead we used the enum of types, and kept for each variable its type as a data member.
+We also decided to keep all the reserved words and regex strings we use in separate class, because these
+strings are used in multiple classes in different packages and so we found out it is redundant to declare
+them on each class they are being used.
+
+If we need to add a new variable type, we need to add it to the types enum and their matching regex string
+to the RegexStrings class. We also need to add a new test to arguments of methods, and check for example if
+a given variable of the new type match the type stored in the method signature.
+In order to add "switch" statements, we need to check in the Parser if there is a "switch" command.
+('switch' will be added to ReservedWords class as a constant).
+In that case create new scope for the switch, and send the variable of the switch as a final variable
+(because it can not be changed inside the switch, we are only checking its value).
+In addition, a new regular expression will be added to RegexStrings that will check if the
+switch syntax is correct, and a method will be added to the parser to handle the switch statement.
+
+In order to add functionality of importing other sJava file's methods and global variables, we will allow
+the 'import' command in the beginning of sJava files.
+When an import command is recognized (using a corresponding regular expression), the other file will be
+imported using regular java's import mechanism, and the method's signature's HashMap and variables' HashMap
+will be imported to the current sJava file.
+That way when a method from the other file is being called, the parser will be able to search if there is
+a matching method in the imported methods, as well as the current file's methods.
+The same approach goes for the global variables imported from the other file.
+Note that when a variable/method is being searched, the first of all they will be searched in the current
+sJava HashMaps, and if they don't exist there, the algorithm will check the imported HashMaps.
+
+~~~~~~ 		Regulat Expressions 	~~~~~~
+
++++ Method call regular expression +++
+
+([a-zA-Z]+\w*)\s*\(\s*(.*)\s*\)\s*;
+
+This regular expression is used to catch a method call command in sJava file.
+It has 2 groups, the first is the method's name, and the second is its arguments.
+The method name may start only with letters (capital or regular) and may not start with underscore of number.
+The method arguments caught are any characters, and the validation is made in the parser.
+
++++ Variable assignment regular expression +++
+
+(_\w+|[a-zA-Z]+\w*)\s*=\s*('.{1}'|".*"|true|false|-?\d*\.?\d+|_\w+|[a-zA-Z]+\w*)\s*;
+
+This regular expression is used to catch a variable assignment command in sJava file.
+The first group is the variable's name, and the second group is the variable assignment.
+The variable name may contain Alphanumeric characters or underscore. It may not start with a digit,
+and if it starts with an underscore it must contain another character afterwards.
+The variable assignment can be a valid variable assignment or another variable name.
+
